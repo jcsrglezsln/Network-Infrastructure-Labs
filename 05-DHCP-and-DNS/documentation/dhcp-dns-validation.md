@@ -30,11 +30,35 @@ Confirmed assignments:
 
 | Device | VLAN | Assigned IP |
 |---|---|---|
-| PC3 | 10 – IT | 192.168.10.12 |
-| PC5 | 20 – ADMIN | 192.168.20.10 |
-| PC4 | 20 – ADMIN | 192.168.20.11 |
+| PC0 | 10 - IT | 192.168.10.12 |
+| PC3 | 10 - IT | 192.168.10.13 |
+| PC5 | 20 - ADMIN | 192.168.20.10 |
+| PC4 | 20 - ADMIN | 192.168.20.11 |
 
 PC1 and PC2 also obtained addresses dynamically in VLAN 30. Their exact assigned addresses were not recorded.
+
+### DHCP Troubleshooting
+
+During validation, PC0 and PC3 in VLAN 10 failed to obtain DHCP addresses and received APIPA addresses instead.
+
+**Root cause:**
+
+The inbound ACL `ACL_VLAN10_IN` did not include an explicit permit rule for DHCP client requests. The existing subnet-based permit rule did not match the initial DHCP Discover packet, which uses source IP address `0.0.0.0`.
+
+**Corrective action:**
+
+The following rule was added to `ACL_VLAN10_IN` on HT-SW-CORE01:
+
+```cisco
+permit udp any eq bootpc any eq bootps
+```
+
+**Validation after correction:**
+
+- PC0 successfully obtained `192.168.10.12`.
+- PC3 successfully obtained `192.168.10.13`.
+- Both clients received the correct subnet mask, default gateway and DNS server.
+- DHCP assignment in VLAN 10 was restored without modifying the DHCP pool or relay configuration.
 
 ## DNS Configuration and Validation
 
@@ -64,10 +88,12 @@ All three hostnames resolved successfully and returned four ICMP replies each.
 
 ## Conclusion
 
-DHCP and DNS services were successfully configured and tested in the Packet Tracer environment.
+DHCP and DNS services were configured and tested in the Packet Tracer environment.
 
 The network supports centralized DHCP address assignment for user VLANs and DNS name resolution for the three server devices.
 
-**Implementation status:** Initial DHCP and DNS validation completed.
+The DHCP troubleshooting process also confirmed the importance of explicitly permitting DHCP client traffic when applying inbound ACLs to user VLAN interfaces.
+
+**Implementation status:** DHCP and DNS configuration and validation completed.
 
 **Note:** These services are simulated using Packet Tracer Server-PT. They do not represent a real Windows Server DHCP or Active Directory-integrated DNS deployment.

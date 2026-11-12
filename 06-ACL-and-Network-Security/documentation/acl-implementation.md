@@ -51,6 +51,8 @@ ip access-list extended ACL_VLAN20_IN
  permit tcp 192.168.20.0 0.0.0.31 host 192.168.40.10 eq domain
  permit tcp 192.168.20.0 0.0.0.31 host 192.168.40.12 eq www
  permit tcp 192.168.20.0 0.0.0.31 host 192.168.40.12 eq 443
+ permit icmp 192.168.20.0 0.0.0.31 192.168.10.0 0.0.0.31 echo-reply
+ permit tcp 192.168.20.0 0.0.0.31 192.168.10.0 0.0.0.31 established
  deny ip 192.168.20.0 0.0.0.31 192.168.10.0 0.0.0.31
  deny ip 192.168.20.0 0.0.0.31 192.168.30.0 0.0.0.63
  deny ip 192.168.20.0 0.0.0.31 192.168.99.0 0.0.0.31
@@ -71,11 +73,13 @@ ACL name: `ACL_VLAN30_IN`
 
 ```cisco
 ip access-list extended ACL_VLAN30_IN
+ permit icmp 192.168.30.0 0.0.0.63 192.168.10.0 0.0.0.31 echo-reply
  permit udp any eq bootpc any eq bootps
  permit udp 192.168.30.0 0.0.0.63 host 192.168.40.10 eq domain
  permit tcp 192.168.30.0 0.0.0.63 host 192.168.40.10 eq domain
  permit tcp 192.168.30.0 0.0.0.63 host 192.168.40.12 eq www
  permit tcp 192.168.30.0 0.0.0.63 host 192.168.40.12 eq 443
+ permit tcp 192.168.30.0 0.0.0.63 192.168.10.0 0.0.0.31 established
  deny ip 192.168.30.0 0.0.0.63 192.168.10.0 0.0.0.31
  deny ip 192.168.30.0 0.0.0.63 192.168.20.0 0.0.0.31
  deny ip 192.168.30.0 0.0.0.63 192.168.99.0 0.0.0.31
@@ -89,6 +93,26 @@ Applied to the SVI:
 interface vlan 30
  ip access-group ACL_VLAN30_IN in
 ```
+
+
+### 4.3 VLAN 10 – IT
+
+ACL name: `ACL_VLAN10_IN`
+
+```cisco
+ip access-list extended ACL_VLAN10_IN
+ permit udp any eq bootpc any eq bootps
+ permit ip 192.168.10.0 0.0.0.31 any
+```
+
+Applied to the SVI:
+
+```cisco
+interface vlan 10
+ ip access-group ACL_VLAN10_IN in
+```
+
+VLAN 10 is the IT network and has unrestricted access to the other internal VLANs, including ADMIN, OPERATIONS, SERVERS and MANAGEMENT, according to the implemented policy.
 
 ## 5. Validation Results
 
@@ -142,17 +166,23 @@ These commands are used to verify ACL definitions, match counters, and inbound A
 
 The following tasks remain pending before completing Stage 6:
 
-- Implement and validate the ACL for VLAN 10 – IT.
-- Test HTTPS access to HT-APP01.
-- Validate DHCP address assignment after ACL implementation.
 - Verify management VLAN restrictions.
 - Perform final end-to-end security tests.
 - Save and document the final configuration.
+
 
 ## 8. Current Status
 
 **Status: In progress**
 
-Extended ACLs have been implemented on VLAN 20 and VLAN 30. Initial tests confirm network segmentation, DNS resolution, and HTTP access to the internal application server.
+Extended ACLs have been implemented on VLAN 10, VLAN 20 and VLAN 30.
 
-Further testing and the IT VLAN security policy are required to complete this stage.
+Validation confirms:
+
+- VLAN 10 IT clients have unrestricted outbound access according to the implemented policy.
+- VLAN 20 ADMIN and VLAN 30 OPERATIONS are restricted from initiating direct communication with other user VLANs and protected internal networks.
+- DNS resolution and HTTP/HTTPS access to HT-APP01 work from VLAN 20 and VLAN 30.
+- DHCP address assignment was validated after correcting the missing DHCP permit rule in ACL_VLAN10_IN.
+- IT clients can initiate communication toward ADMIN and OPERATIONS, while unsolicited communication in the reverse direction remains restricted.
+
+Management VLAN restrictions and final end-to-end security testing remain pending.
